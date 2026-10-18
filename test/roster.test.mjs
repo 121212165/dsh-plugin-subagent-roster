@@ -297,8 +297,9 @@ test('a roster edit can replace the delegate tool instead of colliding with it',
 test('the fan-out prompt delimits the item so a parent cannot fold it into the instruction', () => {
   const prompt = taskFor({ role: 'batch-exact', item: 'alpha', contract: 'one JSON object', index: 0, total: 2 })
   assert.match(prompt, /role "batch-exact"/)
-  assert.match(prompt, /--- item \(verbatim\) ---\nalpha\n--- end item ---/)
-  assert.match(prompt, /output contract: one JSON object/)
+  // The contract must live inside the block the child receives, not beside it.
+  assert.match(prompt, /--- task \(verbatim\) ---\nalpha\n\nOutput contract: one JSON object\n--- end task ---/)
+  assert.match(prompt, /Output contract: one JSON object/)
   assert.match(prompt, /item 1 of 2/)
 })
 
@@ -317,4 +318,6 @@ test('a fan-out item only counts as done when the child finished', () => {
   assert.equal(readChildResult(stream('boom', 'error')).ok, false)
   assert.equal(readChildResult('{"type":"thinking"}').error, 'no delegate tool_result in the run')
 })
+
+
 

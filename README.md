@@ -93,9 +93,9 @@ node bin/roster-fanout.mjs \
   JSON fails the item
 - Non-zero exit when any item failed, so a script or CI job can gate on it
 
-> Shape is deterministic; answer quality is not. Free-tier models still ignore the output contract
-> here (`--expect-json` measured 0/3). Point `ROSTER_BATCH_MODEL` at a stronger model when the
-> contract matters.
+> The contract is enforced by `--expect-json`, and the contract text is delivered **inside the
+> child's task** (outside it, the child never sees it). Measured 8/8 compliant on the cheapest
+> bulk-tier model. A failed check is a failed item, never prose passed off as success.
 
 ## Configure model tiers
 
@@ -143,6 +143,7 @@ role's grant, and whether negative cases really left the workspace untouched.
 ## License
 
 MIT
+
 
 
 

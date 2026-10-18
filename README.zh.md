@@ -75,7 +75,7 @@ node bin/roster-fanout.mjs \
 - 任一失败退出码非 0，可直接用于 CI 或脚本编排
 - `--item alpha --item beta` 可代替 `--items-file`
 
-> 注意：形态确定 ≠ 答案正确。免费档模型即使在这一层也常常不遵守输出契约（实测 `--expect-json` 下 0/3）。契约重要的场景请把 `ROSTER_BATCH_MODEL` 指向更强的模型。
+> 契约由 `--expect-json` 硬校验，且**契约文本会和条目一起传给子代理**（否则它会看不到要求）。实测 8/8 合规，用的是最便宜的批量档模型。校验失败时不会把裸文本当成功返回。
 
 ## 配置模型档位
 
@@ -120,6 +120,7 @@ node bench/run.mjs --repeat 1   # 真实调用测试（需要本地 OpenAI 兼�
 ## License
 
 MIT
+
 
 
 

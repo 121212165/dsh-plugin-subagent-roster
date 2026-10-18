@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-subagent-roster",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Subagent roster for DeepSeek Harness: pinned system prompts and model routes per role, shape-based routing between bulk work and team work, and a roster of same-position/different-temperament agents. 子代理名册：按角色约束系统提示词与模型路由，按任务形态分流，同一岗位提供不同性格与能力档位的角色。",
   "type": "module",
   "license": "MIT",
