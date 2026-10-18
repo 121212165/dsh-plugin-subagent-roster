@@ -1,0 +1,6 @@
+node_modules/
+.bench-ws/
+bench/state/
+bench/results/
+*.log
+.DS_Store

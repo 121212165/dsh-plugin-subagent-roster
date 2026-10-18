@@ -1,0 +1,62 @@
+{
+  "name": "dsh-plugin-subagent-roster",
+  "version": "0.1.0",
+  "description": "Subagent roster for DeepSeek Harness: pinned system prompts and model routes per role, shape-based routing between bulk work and team work, and a roster of same-position/different-temperament agents. 子代理名册：按角色约束系统提示词与模型路由，按任务形态分流，同一岗位提供不同性格与能力档位的角色。",
+  "type": "module",
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./roster": {
+      "types": "./lib/roster.d.ts",
+      "default": "./lib/roster.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "docs",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=22.18",
+    "dsh": ">=0.2.0-rc.2 <0.3.0"
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none \"test/*.test.mjs\"",
+    "check": "node scripts/gen-patch.mjs --check && node scripts/gen-docs.mjs --check && npm test",
+    "bench": "node bench/run.mjs",
+    "gen:patch": "node scripts/gen-patch.mjs",
+    "gen:docs": "node scripts/gen-docs.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "bundle",
+    "subagent",
+    "roster",
+    "orchestration",
+    "multi-agent"
+  ],
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0"
+  },
+  "sideEffects": false
+}
