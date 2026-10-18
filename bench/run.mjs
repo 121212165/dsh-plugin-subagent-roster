@@ -198,9 +198,13 @@ const graded = rows.map((row) => {
     negativeOk = row.children.length === 1 && /none|no tools|not have any tools|cannot/i.test(row.answerTail ?? '')
   }
 
+  // A killed run is not a pass, even when the child it did spawn looked right.
+  const timedOut = row.exit === null
   const spawned = observed.length >= minChildren
-  const verdict = !spawned
-    ? 'NO-CHILD'
+  const verdict = timedOut
+    ? 'TIMEOUT'
+    : !spawned
+      ? 'NO-CHILD'
     : !roleHit
       ? 'WRONG-ROLE'
       : !tierHit
@@ -234,5 +238,6 @@ console.log('')
 console.log(`PASS ${passes}/${total}  calls(monotonic)=${spentTotal}  children=${summary.children}`)
 console.log(`verdicts ${JSON.stringify(summary.verdicts)}`)
 console.log(`summary -> ${outFile}`)
+
 
 

@@ -8,7 +8,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ROLES, TIERS, capabilitiesFor, toolNameFor } from '../lib/roster.js'
+import { ROLES, TIERS, capabilitiesFor } from '../lib/roster.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '..')
@@ -24,12 +24,12 @@ const enCapability = (role) =>
 function table(locale) {
   const header =
     locale === 'zh'
-      ? ['| 工具名 | 岗位 | 性格 | 档位 | 可用工具 | 定位 |', '|---|---|---|---|---|---|']
-      : ['| Tool | Position | Temperament | Tier | Tools | What it is for |', '|---|---|---|---|---|---|']
+      ? ['| 角色（`delegate` 的 `role`） | 岗位 | 性格 | 档位 | 可用工具 | 定位 |', '|---|---|---|---|---|---|']
+      : ["| Role (`delegate`'s `role`) | Position | Temperament | Tier | Tools | What it is for |", '|---|---|---|---|---|---|']
   const rows = ROLES.map((role) => {
     const capability = locale === 'zh' ? zhCapability(role) : enCapability(role)
     const description = locale === 'zh' ? role.description.zh : role.description.en
-    return `| \`${toolNameFor(role)}\` | ${role.position} | ${role.temperament} | ${role.tier} | ${capability} | ${description} |`
+    return `| \`${role.id}\` | ${role.position} | ${role.temperament} | ${role.tier} | ${capability} | ${description} |`
   })
   return [...header, ...rows].join('\n')
 }
@@ -49,7 +49,7 @@ const zh = `# 角色手册
 
 > 由 \`lib/roster.js\` 生成，请勿手改。运行 \`node scripts/gen-docs.mjs\` 重新生成。
 
-每个角色就是一个 \`tool-subagent\` 实例。父代理选角色的动作，就是选一个工具；角色之间不能互相顶替。
+父代理只有一个 \`delegate\` 工具，\`role\` 参数就是下表第一列。选哪个角色，就决定了子代理的系统提示词、可用工具和模型档位；角色之间不能互相顶替。
 
 ${table('zh')}
 
@@ -64,8 +64,8 @@ const en = `# Role reference
 
 > Generated from \`lib/roster.js\`. Do not edit by hand; run \`node scripts/gen-docs.mjs\`.
 
-Each role is one \`tool-subagent\` instance. Choosing a role is choosing a tool, and no role can
-substitute for another.
+The parent has exactly one \`delegate\` tool; \`role\` is the first column below. A role decides the
+child's system prompt, its tool range, and its model tier, and no role can substitute for another.
 
 ${table('en')}
 
@@ -94,3 +94,4 @@ for (const [file, body] of [
   }
 }
 if (process.argv.includes('--check')) console.log('role docs are current')
+

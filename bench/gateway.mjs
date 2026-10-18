@@ -197,6 +197,10 @@ const server = http.createServer(async (req, res) => {
           buffered += text
           res.write(value)
         }
+      } catch (error) {
+        // A dropped upstream socket must not take the whole bench down.
+        log({ ts: new Date().toISOString(), model: payload.model, status: 0, stream: true, error: String(error?.message ?? error), ms: Date.now() - started, calls })
+        if (!res.writableEnded) res.end()
       } finally {
         inflight -= 1
         res.end()
@@ -262,7 +266,15 @@ function firstSystemChars(payload) {
 server.requestTimeout = 15 * 60 * 1000
 server.headersTimeout = 15 * 60 * 1000
 
+process.on('uncaughtException', (error) => {
+  console.error('[gateway] uncaught:', error?.message ?? error)
+})
+process.on('unhandledRejection', (error) => {
+  console.error('[gateway] unhandled rejection:', error?.message ?? error)
+})
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[gateway] listening on http://127.0.0.1:${PORT} keys=${keys.length} budget=${BUDGET} upstream=${UPSTREAM}`)
 })
+
 

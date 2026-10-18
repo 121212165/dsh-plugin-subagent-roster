@@ -20,9 +20,9 @@ This plugin turns all three from *prompt requests* into *structural constraints*
 
 | Constraint | Mechanism | Effect |
 |---|---|---|
-| System prompt | one `tool-subagent` instance per role; its `persona` becomes the child's `persona-prefix` section | identity is decided by the role, never by the parent |
-| Capability | that instance's `toolFilter.allow` | a reviewer has **no** write tool at all — it cannot edit even if asked |
-| Model | that instance's `agentOptions` | bulk runs cheap, review runs adequate, team runs strongest |
+| System prompt | each delegation puts the role `persona` on the request; it becomes the child's `persona-prefix` section | identity is decided by the role, never by the parent |
+| Capability | the request's `toolFilter.allow` | a reviewer has **no** write tool at all — it cannot edit even if asked |
+| Model | the request's `agentOptions` | bulk runs cheap, review runs adequate, team runs strongest |
 | Depth | `maxDepth: 1` and a filter that never grants `subagent*` | a role child is a leaf; no recursive fan-out |
 
 ## Two lines
@@ -32,7 +32,7 @@ This plugin turns all three from *prompt requests* into *structural constraints*
 - **Team line** — planning, building, reviewing, retrieving, assembling. Each role has a different
   capability range, and no role can stand in for another.
 
-All 12 roles: [role reference](docs/roles.en.md) ([中文](docs/roles.zh.md)).
+All 20 roles: [role reference](docs/roles.en.md) ([中文](docs/roles.zh.md)).
 
 ## Install
 
@@ -44,8 +44,31 @@ dsh plugin --profile <your-profile> add github:<owner>/dsh-plugin-subagent-roste
 dsh plugin --profile <your-profile> add /path/to/dsh-plugin-subagent-roster
 ```
 
-The bundle layer applies automatically. `dsh --profile <name> --dump-config` should show 12
-`roster-*` rows.
+The bundle applies one plugin row. The parent agent gains **one** `delegate` tool whose `role` enum
+is the whole roster, so it pays for one schema instead of twenty. `dsh --profile <name>
+--dump-config` should show the `subagent-roster` row.
+
+## Operations page (define your own roles)
+
+While a profile runs, the plugin serves a loopback page:
+
+```
+http://127.0.0.1:4317/
+```
+
+Add or delete roles, change a role's position, temperament, tier or capability range, and edit the
+persona — the child's system prompt — directly. **Saving applies immediately, no restart**: the page
+replaces the delegation tool registration and the routing section, and rolls back to the previous
+roster if the new one fails to mount.
+
+Roles live in `$DSH_HOME/subagent-roster/roles.json`, seeded from the shipped twenty on first start.
+The file is a normal document: editing it by hand is supported.
+
+- Port is the plugin's `pagePort` setting; `0` disables the page.
+- **No authentication**, bound to `127.0.0.1`: it grants the same file authority a local shell
+  already has. Do not expose it on another interface.
+- Every save is validated as a whole: kebab-case ids, known tier/capability/line values, and role
+  invariants (a reviewer that can write is rejected). A rejected document never overwrites the file.
 
 ## Configure model tiers
 
@@ -82,6 +105,7 @@ role's grant, and whether negative cases really left the workspace untouched.
 
 - Design notes: [docs/design.md](docs/design.md)
 - Test report: [docs/test-report.md](docs/test-report.md)
+- Review: [docs/review.md](docs/review.md)
 
 ## Compatibility
 
@@ -92,3 +116,6 @@ role's grant, and whether negative cases really left the workspace untouched.
 ## License
 
 MIT
+
+
+

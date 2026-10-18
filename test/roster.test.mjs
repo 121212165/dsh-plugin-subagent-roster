@@ -1,24 +1,36 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { ROLES, TIERS, agentOptionsFor, capabilitiesFor, roleIds, toolNameFor, validateRoster } from '../lib/roster.js'
+import { ROLES, TIERS, agentOptionsFor, capabilitiesFor, roleIds, validateRoster } from '../lib/roster.js'
+import { buildDelegateRequest, registerDelegate } from '../lib/delegate.js'
 import { renderPatch } from '../lib/patch.js'
+import { loadRoles, saveRoles, validateRoles } from '../lib/store.js'
+import { startPage } from '../lib/page.js'
 import { apply, routingText } from '../lib/index.js'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const committed = fs.readFileSync(path.join(repoRoot, 'cordis.patch.yml'), 'utf8')
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-test-'))
+let fileSeq = 0
+const rosterFile = () => path.join(tmpDir, `roles-${fileSeq++}.json`)
+const cloneRoles = () => structuredClone(ROLES)
 
 function fakeCtx() {
   const sections = []
   const warnings = []
+  const registered = []
   return {
     sections,
     warnings,
+    registered,
     logger: { warn: (message) => warnings.push(message) },
     effect: (fn) => fn(),
+    tools: { register: (tool) => { registered.push(tool); return () => {} } },
+    subagents: {},
     systemPrompt: {
       getSectionOrder: () => 100,
       section: (section) => {
@@ -33,14 +45,8 @@ test('the roster is internally coherent', () => {
   assert.deepEqual(validateRoster(), [])
 })
 
-test('every role has a unique id and a unique tool name', () => {
+test('every role has a unique id and a deep-enough persona', () => {
   assert.equal(new Set(roleIds()).size, ROLES.length)
-  const toolNames = ROLES.map(toolNameFor)
-  assert.equal(new Set(toolNames).size, ROLES.length)
-  for (const name of toolNames) assert.match(name, /^subagent_[a-z][a-z0-9_]*$/)
-})
-
-test('every persona is long enough to constrain a child and leaks no placeholder', () => {
   for (const role of ROLES) {
     assert.ok(role.prompt.length > 200, `${role.id} persona is too thin`)
     assert.ok(!/\bundefined\b|\$\{/.test(role.prompt), `${role.id} persona leaked a placeholder`)
@@ -60,10 +66,9 @@ test('the same position carries several temperaments with different prompts', ()
   }
 })
 
-test('bulk units are blind: no tools, no children', () => {
+test('bulk units are blind: no tools at all', () => {
   for (const role of ROLES.filter((candidate) => candidate.line === 'bulk')) {
     assert.deepEqual(capabilitiesFor(role), [], `${role.id} must have no tools`)
-    assert.equal(role.capability, 'blind')
   }
 })
 
@@ -76,88 +81,81 @@ test('reviewers and researchers cannot modify the workspace', () => {
   }
 })
 
-test('every role is pinned to a known tier and a tier-appropriate token ceiling', () => {
+test('a role request carries its persona, filter, tier, and depth together', () => {
   for (const role of ROLES) {
-    assert.ok(role.tier in TIERS, `${role.id} tier`)
-    const options = agentOptionsFor(role.tier)
-    assert.ok(options.maxTokens > 0)
-    assert.equal(options.provider, agentOptionsFor(role.tier).provider)
+    const request = buildDelegateRequest(role, 'do the thing', { llmProvider: 'bench', parent: { id: 'p' } })
+    const options = agentOptionsFor(role.tier, { provider: 'bench' })
+    assert.equal(request.persona, role.prompt, `${role.id} persona not pinned on the request`)
+    assert.deepEqual(request.toolFilter, { allow: capabilitiesFor(role) })
+    assert.deepEqual(request.agentOptions, options)
+    assert.equal(request.maxDepth, 1, 'a role child sits one level deep')
+    assert.equal(request.label, `delegate:${role.id}`)
+    assert.equal(request.prompt[0].text, 'do the thing')
+    assert.ok(request.toolFilter.allow.every((tool) => !tool.startsWith('subagent')), `${role.id} could delegate`)
   }
 })
 
-test('cordis.patch.yml is generated from the roster and is current', () => {
-  assert.equal(committed, renderPatch(), 'run `node scripts/gen-patch.mjs`')
+test('an unknown role cannot produce a request', () => {
+  assert.throws(() => buildDelegateRequest(undefined, 'x'), /unknown role/)
 })
 
-test('the composition pins one tool-subagent row per role', () => {
-  const rows = committed.match(/^ {4}- id: roster-/gm) ?? []
-  assert.equal(rows.length, ROLES.length)
+test('cordis.patch.yml is generated and mounts exactly one plugin', () => {
+  assert.equal(committed, renderPatch())
+  const rows = committed.match(/^ {4}- id: /gm) ?? []
+  assert.equal(rows.length, 1, 'the composition must not grow a row per role')
+  assert.ok(committed.includes("name: 'dsh-plugin-subagent-roster'"))
   for (const role of ROLES) {
-    assert.ok(committed.includes(`toolName: '${toolNameFor(role)}'`), `missing tool for ${role.id}`)
-    assert.ok(committed.includes(role.prompt.split('\n')[0]), `missing persona text for ${role.id}`)
-    assert.ok(committed.includes(`- id: roster-${role.id}`), `missing row ${role.id}`)
-  }
-  assert.ok(committed.includes("name: 'dsh-plugin-subagent-roster'"), 'the bundle must mount its own validator')
-})
-
-test('every row sits at delegation depth one and grants no subagent tool', () => {
-  // Depth is an absolute cap on the child's depth, so 0 would refuse to spawn a
-  // child at all. One level is what a role child needs; being a leaf comes from
-  // the tool filter, which never names a subagent tool.
-  const depths = [...committed.matchAll(/^ {8}maxDepth: (\d+)$/gm)].map((match) => match[1])
-  assert.equal(depths.length, ROLES.length)
-  assert.ok(depths.every((depth) => depth === '1'), 'a child must be allowed to exist')
-  for (const role of ROLES) {
-    assert.ok(!capabilitiesFor(role).some((tool) => tool.startsWith('subagent')), `${role.id} could delegate`)
-  }
-  assert.ok(!/allow: \[[^\]]*'subagent/.test(committed), 'no allow-list may grant a subagent tool')
-})
-
-test('blind roles get an empty allow-list, others a non-empty one', () => {
-  const blind = ROLES.filter((role) => capabilitiesFor(role).length === 0)
-  assert.ok(blind.length >= 3, 'the bulk line must be blind')
-  assert.equal([...committed.matchAll(/^ {10}allow: \[\]$/gm)].length, blind.length)
-  for (const role of ROLES.filter((candidate) => capabilitiesFor(candidate).length > 0)) {
-    const rendered = capabilitiesFor(role).map((tool) => `'${tool}'`).join(', ')
-    assert.ok(committed.includes(`allow: [${rendered}]`), `${role.id} allow-list missing`)
+    assert.ok(!committed.includes(`id: roster-${role.id}`), `${role.id} leaked back into the composition`)
   }
 })
 
-test('model pinning is env-overridable, never a bare literal', () => {
-  const pins = committed.split('\n').filter((line) => /^ {10}(model|maxTokens|provider):/.test(line))
-  assert.equal(pins.length, ROLES.length * 3)
-  for (const line of pins) assert.ok(line.includes('!!js'), `hardcoded pin: ${line.trim()}`)
+test('the delegate tool exposes exactly the roster as its enum', () => {
+  const ctx = fakeCtx()
+  registerDelegate(ctx, { subagentProvider: 'spawn' })
+  assert.equal(ctx.registered.length, 1)
+  const tool = ctx.registered[0]
+  assert.equal(tool.name, 'delegate')
+  const schema = tool.parameters
+  assert.equal(schema.type, 'object')
+  const roleParam = schema.properties.role
+  assert.ok(roleParam, 'delegate must take a role')
+  assert.deepEqual([...roleParam.enum].sort(), [...roleIds()].sort())
+  assert.ok(schema.required.includes('role'))
+  assert.ok(schema.required.includes('task'))
 })
 
-test('routing text describes exactly the mounted tools', () => {
+test('the delegate description states each role capability, including tool-free bulk units', () => {
+  const ctx = fakeCtx()
+  registerDelegate(ctx, { subagentProvider: 'spawn' })
+  const description = ctx.registered[0].description
+  for (const role of ROLES) assert.ok(description.includes(role.id), `description omits ${role.id}`)
+  assert.ok(description.includes('Tools: none'), 'blind roles must be advertised as tool-free')
+  assert.ok(description.includes('cannot widen its own scope'))
+})
+
+test('routing text points at the one tool and names every role', () => {
   const text = routingText()
-  for (const role of ROLES) assert.ok(text.includes(toolNameFor(role)), `routing omits ${role.id}`)
+  assert.ok(text.includes('`delegate`'), 'routing must name the tool the model actually has')
+  for (const role of ROLES) assert.ok(text.includes(role.id), `routing omits ${role.id}`)
   assert.ok(!/undefined/.test(text))
-  const mentioned = [...text.matchAll(/`(subagent_[a-z0-9_]+)`/g)].map((match) => match[1])
-  assert.deepEqual([...new Set(mentioned)].sort(), ROLES.map(toolNameFor).sort())
-})
-
-test('routing text states the capability of each role', () => {
-  const text = routingText()
-  assert.ok(text.includes('pure transform'), 'blind roles must be advertised as tool-free')
-  assert.ok(text.includes('read, write, edit'), 'builders must advertise their write tools')
+  assert.ok(text.includes('routing error'), 'the bulk trigger must be stated as an error, not a preference')
 })
 
 test('strict mode refuses an incoherent roster, advisory mode only warns', () => {
   assert.throws(
-    () => apply(fakeCtx(), { mode: 'strict', provider: 'bench', allowedModels: ['bench/only-this-model'] }),
+    () => apply(fakeCtx(), { mode: 'strict', provider: 'bench', allowedModels: ['bench/only-this-model'], pagePort: 0, rosterFile: rosterFile() }),
     /composition problem/,
   )
   const warned = fakeCtx()
-  apply(warned, { mode: 'advisory', provider: 'bench', allowedModels: ['bench/only-this-model'] })
+  apply(warned, { mode: 'advisory', provider: 'bench', allowedModels: ['bench/only-this-model'], pagePort: 0, rosterFile: rosterFile() })
   assert.equal(warned.warnings.length, 1)
   assert.match(warned.warnings[0], /allow-list forbids/)
   assert.equal(warned.sections.length, 1, 'advisory still mounts the routing section')
 })
 
-test('a clean roster mounts exactly one routing section', () => {
+test('a clean roster mounts one routing section', () => {
   const ctx = fakeCtx()
-  apply(ctx, { mode: 'strict' })
+  apply(ctx, { mode: 'strict', pagePort: 0, rosterFile: rosterFile() })
   assert.equal(ctx.warnings.length, 0)
   assert.equal(ctx.sections.length, 1)
   assert.equal(ctx.sections[0].name, 'roster:routing')
@@ -165,12 +163,132 @@ test('a clean roster mounts exactly one routing section', () => {
   assert.ok(ctx.sections[0].text.length > 500)
 })
 
-test('routing guidance can be switched off without failing the roster check', () => {
+test('routing guidance can be switched off while the roster check still runs', () => {
   const ctx = fakeCtx()
-  apply(ctx, { mode: 'strict', routingGuidance: false })
+  apply(ctx, { mode: 'strict', routingGuidance: false, pagePort: 0, rosterFile: rosterFile() })
   assert.equal(ctx.sections.length, 0)
 })
 
 test('an unknown tier fails loudly instead of falling back', () => {
   assert.throws(() => agentOptionsFor('nope'), /unknown tier "nope"/)
+})
+
+test('tiers stay distinguishable in logs', () => {
+  const routes = Object.keys(TIERS).map((tier) => agentOptionsFor(tier).model)
+  assert.ok(routes.every((route) => typeof route === 'string' && route.length > 0))
+})
+
+
+
+
+
+
+test('the store seeds a roster file and round-trips it', () => {
+  const file = rosterFile()
+  const seeded = loadRoles({ file })
+  assert.equal(seeded.source, 'builtin')
+  assert.equal(seeded.roles.length, ROLES.length)
+  assert.ok(fs.existsSync(file), 'first start must write the seed so an operator can edit it')
+
+  const edited = loadRoles({ file }).roles.map((role) => ({ ...role, order: role.order + 1 }))
+  assert.deepEqual(saveRoles(edited, { file }), { ok: true, problems: [] })
+  const reloaded = loadRoles({ file })
+  assert.equal(reloaded.source, 'file')
+  assert.equal(reloaded.roles[0].order, ROLES[0].order + 1)
+})
+
+test('an invalid roster is rejected before it reaches the disk', () => {
+  const file = rosterFile()
+  loadRoles({ file })
+  const before = fs.readFileSync(file, 'utf8')
+  const broken = cloneRoles()
+  broken[0].tier = 'nope'
+  const result = saveRoles(broken, { file })
+  assert.equal(result.ok, false)
+  assert.match(result.problems.join('\n'), /tier must be one of/)
+  assert.equal(fs.readFileSync(file, 'utf8'), before, 'a rejected save must leave the previous roster intact')
+})
+
+test('a corrupt roster file falls back to the shipped roles instead of crashing', () => {
+  const file = rosterFile()
+  fs.writeFileSync(file, '{ not json')
+  const loaded = loadRoles({ file })
+  assert.equal(loaded.source, 'fallback')
+  assert.equal(loaded.roles.length, ROLES.length)
+  assert.ok(loaded.problems.length > 0)
+})
+
+test('validateRoles catches duplicate ids and empty rosters', () => {
+  assert.match(validateRoles([]).join('\n'), /at least one role/)
+  const dup = cloneRoles()
+  dup.push(structuredClone(dup[0]))
+  assert.match(validateRoles(dup).join('\n'), /duplicate role id/)
+})
+
+test('the operations page serves the editor and applies a roster over HTTP', async () => {
+  const file = rosterFile()
+  const loaded = loadRoles({ file })
+  let applied = null
+  const page = startPage({
+    port: 4399,
+    state: () => ({
+      roles: loaded.roles,
+      tiers: Object.keys(TIERS),
+      capabilities: ['blind', 'read', 'write', 'research'],
+      lines: ['bulk', 'team'],
+      file,
+      source: loaded.source,
+    }),
+    save: (roles) => saveRoles(roles, { file }),
+    onApply: async (roles) => {
+      applied = roles
+    },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 150))
+
+  const state = await (await fetch('http://127.0.0.1:4399/api/state')).json()
+  assert.equal(state.roles.length, ROLES.length)
+
+  const html = await (await fetch('http://127.0.0.1:4399/')).text()
+  assert.match(html, /Subagent roster/)
+  assert.match(html, /api\/state/)
+
+  const next = cloneRoles().map((role) => ({ ...role, order: 1 }))
+  const put = await fetch('http://127.0.0.1:4399/api/state', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ roles: next }),
+  })
+  assert.equal(put.status, 200)
+  assert.equal(applied.length, next.length)
+  assert.equal(loadRoles({ file }).roles[0].order, 1, 'the page must persist what it applied')
+
+  const bad = await fetch('http://127.0.0.1:4399/api/state', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ roles: [] }),
+  })
+  assert.equal(bad.status, 400)
+  await page.close()
+})
+
+test('a roster edit can replace the delegate tool instead of colliding with it', () => {
+  const names = new Set()
+  const ctx = {
+    tools: {
+      register(tool) {
+        if (names.has(tool.name)) throw new Error(`tool "${tool.name}" is already registered`)
+        names.add(tool.name)
+        return () => names.delete(tool.name)
+      },
+    },
+  }
+  const first = registerDelegate(ctx, { roles: ROLES })
+  assert.equal(typeof first, 'function', 'registerDelegate must hand back its disposer')
+  assert.throws(() => registerDelegate(ctx, { roles: ROLES }), /already registered/)
+  first()
+  const second = registerDelegate(ctx, { roles: ROLES })
+  assert.ok(names.has('delegate'))
+  second()
+  assert.equal(names.size, 0)
 })

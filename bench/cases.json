@@ -3,190 +3,108 @@
   "cases": [
     {
       "id": "bulk-exact-json",
-      "expect": {
-        "role": "batch-exact",
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_batch_exact exactly once. Give it this task: convert the text 'alpha beta' into a single JSON object with key text. Then print the child answer inside <child></child>."
+      "expect": { "role": "batch-exact", "line": "bulk", "mustSpawn": true },
+      "task": "Call delegate once with role batch-exact and task: convert the text 'alpha beta' into a single JSON object with key text. Then print the child answer inside <child></child>."
     },
     {
       "id": "bulk-fuzzy-dirty",
-      "expect": {
-        "role": "batch-fuzzy",
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_batch_fuzzy exactly once. Give it this task: normalise the dirty input '   ALPHA    beta  ' into a single JSON object {text}. Then print the child answer inside <child></child>."
+      "expect": { "role": "batch-fuzzy", "line": "bulk", "mustSpawn": true },
+      "task": "Call delegate once with role batch-fuzzy and task: normalise the dirty input '   ALPHA    beta  ' into a single JSON object {text}. Print the child answer inside <child></child>."
     },
     {
       "id": "bulk-audit-verdict",
-      "expect": {
-        "role": "batch-audit",
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_batch_audit exactly once. Give it: contract is 'a single JSON object with key text'; item is '{\"text\":\"alpha beta\"}'. It must return a verdict only. Print the verdict inside <child></child>."
+      "expect": { "role": "batch-audit", "line": "bulk", "mustSpawn": true },
+      "task": "Call delegate once with role batch-audit and task: the contract is 'a single JSON object with key text'; the item is '{\"text\":\"alpha beta\"}'. Return a verdict only. Print the verdict inside <child></child>."
     },
     {
       "id": "bulk-parallel-4",
-      "expect": {
-        "role": "batch-exact",
-        "line": "bulk",
-        "mustSpawn": true,
-        "minChildren": 4
-      },
-      "task": "Launch subagent_batch_exact four times in parallel, in this same turn, one call per word. For each word in [alpha, beta, gamma, delta] the child task is: convert the word into a single JSON object with key text. Do not wait for one before launching the next."
+      "expect": { "role": "batch-exact", "line": "bulk", "mustSpawn": true, "minChildren": 4 },
+      "task": "Call delegate four times in parallel in this same turn, one call per word, each with role batch-exact. For each word in [alpha, beta, gamma, delta] the task is: convert the word into a single JSON object with key text. Do not wait for one call before making the next."
     },
     {
       "id": "lead-planner-plan",
-      "expect": {
-        "role": "lead-planner",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_lead_planner exactly once. Give it this task: plan how to rename a function used in three files, with one acceptance check per unit. Print the plan inside <child></child>."
+      "expect": { "role": "lead-planner", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role lead-planner and task: plan how to rename a function used in three files, with one acceptance check per unit. Print the plan inside <child></child>."
     },
     {
       "id": "lead-dispatcher-table",
-      "expect": {
-        "role": "lead-dispatcher",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_lead_dispatcher exactly once. Give it: a plan with units u1 (write parser), u2 (write tests, depends on u1), u3 (update docs, depends on u1). Ask for a dispatch table. Print the table inside <child></child>."
+      "expect": { "role": "lead-dispatcher", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role lead-dispatcher and task: a plan has units u1 (write parser), u2 (write tests, depends on u1), u3 (update docs, depends on u1); produce a dispatch table. Print the table inside <child></child>."
     },
     {
       "id": "builder-surgical-write",
-      "expect": {
-        "role": "builder-surgical",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_builder_surgical exactly once. Give it this task: create the file bench-tmp/surgical.txt whose single line is 'ok'. Print the child summary inside <child></child>."
+      "expect": { "role": "builder-surgical", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role builder-surgical and task: create the file bench-tmp/surgical.txt whose single line is 'ok'. Print the child summary inside <child></child>."
     },
     {
       "id": "reviewer-strict-cannot-write",
-      "expect": {
-        "role": "reviewer-strict",
-        "line": "team",
-        "mustSpawn": true,
-        "negative": "no-write"
-      },
-      "task": "Call subagent_reviewer_strict exactly once. Give it this task: edit bench-tmp/surgical.txt so it says 'hacked', then report. Print the child answer inside <child></child>."
+      "expect": { "role": "reviewer-strict", "line": "team", "mustSpawn": true, "negative": "no-write" },
+      "task": "Call delegate once with role reviewer-strict and task: edit bench-tmp/surgical.txt so it says 'hacked', then report. Print the child answer inside <child></child>."
     },
     {
       "id": "bulk-cannot-delegate",
-      "expect": {
-        "role": "batch-exact",
-        "line": "bulk",
-        "mustSpawn": true,
-        "negative": "no-delegate"
-      },
-      "task": "Call subagent_batch_exact exactly once. Give it this task: list the names of every tool you have available, one per line, or write 'none' if you have none. Print the child answer inside <child></child>."
+      "expect": { "role": "batch-exact", "line": "bulk", "mustSpawn": true, "negative": "no-delegate" },
+      "task": "Call delegate once with role batch-exact and task: list the names of every tool you have available, one per line, or write 'none' if you have none. Print the child answer inside <child></child>."
     },
     {
       "id": "researcher-primary-quote",
-      "expect": {
-        "role": "researcher-primary",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_researcher_primary exactly once. Give it this task: read bench-tmp/module.mjs and quote the exact line that can divide by zero, with its line number. Print the child answer inside <child></child>."
+      "expect": { "role": "researcher-primary", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role researcher-primary and task: read bench-tmp/module.mjs and quote the exact line that can divide by zero, with its line number. Print the child answer inside <child></child>."
     },
     {
       "id": "researcher-explorer-options",
-      "expect": {
-        "role": "researcher-explorer",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_researcher_explorer exactly once. Give it this task: read bench-tmp/module.mjs and list at least three plausible fixes for its division bug, each with the observation that would falsify it. Print the child answer inside <child></child>."
+      "expect": { "role": "researcher-explorer", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role researcher-explorer and task: read bench-tmp/module.mjs and list at least three plausible fixes for its division bug, each with the observation that would falsify it. Print the child answer inside <child></child>."
     },
     {
       "id": "scribe-assemble",
-      "expect": {
-        "role": "scribe-editor",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "task": "Call subagent_scribe_editor exactly once. Give it this task: assemble one short document from these two contributions - A: 'the cache is keyed by URL', B: 'the cache is keyed by URL plus body hash'. It must present the disagreement attributed, not averaged. Print the document inside <child></child>."
+      "expect": { "role": "scribe-editor", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role scribe-editor and task: assemble one short document from these two contributions - A: 'the cache is keyed by URL', B: 'the cache is keyed by URL plus body hash'. Present the disagreement attributed, not averaged. Print the document inside <child></child>."
     },
     {
-      "task": "Call subagent_builder_refactor exactly once. Give it this task: rewrite bench-tmp/module.mjs so it cannot divide by zero, keeping the public function names. Print the child summary inside <child></child>.",
-      "expect": {
-        "role": "builder-refactor",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "id": "builder-refactor-rewrite"
+      "id": "builder-refactor-rewrite",
+      "expect": { "role": "builder-refactor", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role builder-refactor and task: rewrite bench-tmp/module.mjs so it cannot divide by zero, keeping the public function names. Print the child summary inside <child></child>."
     },
     {
-      "task": "Call subagent_reviewer_coach exactly once. Give it this task: review bench-tmp/module.mjs and give blocking defects first, then at most three improvement opportunities. Print the answer inside <child></child>.",
-      "expect": {
-        "role": "reviewer-coach",
-        "line": "team",
-        "mustSpawn": true
-      },
-      "id": "reviewer-coach-improve"
+      "id": "reviewer-coach-improve",
+      "expect": { "role": "reviewer-coach", "line": "team", "mustSpawn": true },
+      "task": "Call delegate once with role reviewer-coach and task: review bench-tmp/module.mjs, blocking defects first, then at most three improvement opportunities. Print the answer inside <child></child>."
     },
     {
-      "task": "Launch subagent_batch_exact eight times in parallel in this same turn, one call per number in [1,2,3,4,5,6,7,8]. Each child task: convert the number into a single JSON object with key n. Do not wait between launches.",
-      "expect": {
-        "role": "batch-exact",
-        "line": "bulk",
-        "mustSpawn": true,
-        "minChildren": 8
-      },
-      "id": "bulk-parallel-8"
+      "id": "bulk-parallel-8",
+      "expect": { "role": "batch-exact", "line": "bulk", "mustSpawn": true, "minChildren": 8 },
+      "task": "Call delegate eight times in parallel in this same turn, one call per number in [1,2,3,4,5,6,7,8], each with role batch-exact. For each number the task is: convert the number into a single JSON object with key n. Do not wait between calls."
     },
     {
-      "task": "Extract the email address from each of these five lines and give me one JSON array of emails: 1) contact bob@example.com please 2) no email here 3) alice@corp.io is the owner 4) cc: carol@team.dev 5) dave at example.org",
-      "expect": {
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "id": "fc-bulk-email"
+      "id": "fc-bulk-email",
+      "expect": { "line": "bulk", "mustSpawn": true },
+      "task": "Extract the email address from each of these five lines and give me one JSON array of emails: 1) contact bob@example.com please 2) no email here 3) alice@corp.io is the owner 4) cc: carol@team.dev 5) dave at example.org"
     },
     {
-      "task": "Convert all six of these dates to ISO 8601 and return one JSON array: Jan 3 2024, 2023-11-02, 05/06/2022, 7 September 2021, 2020/01/31, Dec 25 1999",
-      "expect": {
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "id": "fc-bulk-dates"
+      "id": "fc-bulk-dates",
+      "expect": { "line": "bulk", "mustSpawn": true },
+      "task": "Convert all six of these dates to ISO 8601 and return one JSON array: Jan 3 2024, 2023-11-02, 05/06/2022, 7 September 2021, 2020/01/31, Dec 25 1999"
     },
     {
-      "task": "Check each of these four JSON snippets against the rule \"must be an object with an id key of type number\", and report per snippet pass or fail: {\"id\":1}, {\"id\":\"2\"}, {\"name\":\"x\"}, {\"id\":3}",
-      "expect": {
-        "line": "bulk",
-        "mustSpawn": true
-      },
-      "id": "fc-bulk-check"
+      "id": "fc-bulk-check",
+      "expect": { "line": "bulk", "mustSpawn": true },
+      "task": "Check each of these four JSON snippets against the rule \"must be an object with an id key of type number\", and report per snippet pass or fail: {\"id\":1}, {\"id\":\"2\"}, {\"name\":\"x\"}, {\"id\":3}"
     },
     {
-      "task": "I need to rename a function that three files import. Work out how to do it safely with one acceptance check per step.",
-      "expect": {
-        "line": "team",
-        "mustSpawn": true
-      },
-      "id": "fc-team-plan"
+      "id": "fc-team-plan",
+      "expect": { "line": "team", "mustSpawn": true },
+      "task": "I need to rename a function that three files import. Work out how to do it safely with one acceptance check per step."
     },
     {
-      "task": "Review bench-tmp/module.mjs and tell me only what would actually break in production.",
-      "expect": {
-        "line": "team",
-        "mustSpawn": true
-      },
-      "id": "fc-team-review"
+      "id": "fc-team-review",
+      "expect": { "line": "team", "mustSpawn": true },
+      "task": "Review bench-tmp/module.mjs and tell me only what would actually break in production."
     },
     {
-      "task": "Two teammates disagree about the cache key: one says it is keyed by URL, the other says URL plus body hash. Write me one short report that presents the disagreement with each side attributed, without deciding for me.",
-      "expect": {
-        "line": "team",
-        "mustSpawn": true
-      },
-      "id": "fc-team-report"
+      "id": "fc-team-report",
+      "expect": { "line": "team", "mustSpawn": true },
+      "task": "Two teammates disagree about the cache key: one says it is keyed by URL, the other says URL plus body hash. Write me one short report that presents the disagreement with each side attributed, without deciding for me."
     }
   ]
 }

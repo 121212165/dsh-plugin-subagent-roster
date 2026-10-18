@@ -14,9 +14,9 @@ DSH 内置的 `subagent` 工具让子代理继承父代理的身份与全部工�
 
 | 约束 | 机制 | 效果 |
 |---|---|---|
-| 系统提示词 | 每个角色一个 `tool-subagent` 实例，`persona` 注入子代理的 `persona-prefix` 段落 | 子代理身份由角色决定，父代理身份不泄漏 |
-| 能力范围 | 同一实例的 `toolFilter.allow` 精确列出可用工具 | 评审角色**没有**写文件的工具，想改也改不了 |
-| 模型档位 | 实例的 `agentOptions` 固定 provider/model/maxTokens | 批量档便宜、评审档够用、团队档最强，各自独立可换 |
+| 系统提示词 | 每次委派把角色 `persona` 放进请求，注入子代理的 `persona-prefix` 段落 | 子代理身份由角色决定，父代理身份不泄漏 |
+| 能力范围 | 请求里的 `toolFilter.allow` 精确列出可用工具 | 评审角色**没有**写文件的工具，想改也改不了 |
+| 模型档位 | 请求里的 `agentOptions` 固定 provider/model/maxTokens | 批量档便宜、评审档够用、团队档最强，各自独立可换 |
 | 委派深度 | `maxDepth: 1` 且工具过滤从不授予 `subagent*` | 角色子代理是叶子，不能无限递归 |
 
 ## 两条任务线
@@ -24,7 +24,7 @@ DSH 内置的 `subagent` 工具让子代理继承父代理的身份与全部工�
 - **批量线**：一次一条、并行发起、子代理**没有任何工具**。适合 20 条数据的字段抽取、逐条校验、逐条改写。
 - **团队线**：规划、实现、评审、检索、成稿，每个角色能力范围不同，子代理之间不可互换。
 
-完整的 12 个角色见 [角色手册](docs/roles.zh.md)（[English](docs/roles.en.md)）。
+完整的 20 个角色见 [角色手册](docs/roles.zh.md)（[English](docs/roles.en.md)）。父代理只花一个工具 schema 的成本，而不是二十个。
 
 ## 安装
 
@@ -36,7 +36,23 @@ dsh plugin --profile <你的 profile> add github:<owner>/dsh-plugin-subagent-ros
 dsh plugin --profile <your-profile> add /path/to/dsh-plugin-subagent-roster
 ```
 
-安装后组合层自动生效，`dsh --profile <name> --dump-config` 应能看到 12 个 `roster-*` 行。
+安装后组合层自动生效（只挂一行），父代理会多出**一个** `delegate` 工具，其 `role` 枚举就是 20 个角色。`dsh --profile <name> --dump-config` 应能看到 `subagent-roster` 一行。
+
+## 操作页面（自己设置角色）
+
+profile 启动后，插件在本机回环起一个页面：
+
+```
+http://127.0.0.1:4317/
+```
+
+可以增删角色、改岗位/性格/档位/能力范围、直接编辑每个角色的 persona（子代理的系统提示词），**保存即生效，无需重启**（页面保存时会替换工具注册与分流段落，失败会回滚到上一版）。
+
+角色数据在 `$DSH_HOME/subagent-roster/roles.json`（首次启动由内置 20 个角色播种），也可以手动编辑该文件。
+
+- 端口由插件配置 `pagePort` 控制，设为 `0` 关闭。
+- **无鉴权**：只绑定 `127.0.0.1`，权限等价于本机 shell。不要把它暴露到别的网卡上。
+- 保存前会整体校验：id 必须 kebab-case、档位/能力/形态必须是已知值、能力范围与角色定位冲突（例如评审角色带写权限）会被拒绝，且**不会覆盖**已有文件。
 
 ## 配置模型档位
 
@@ -70,6 +86,7 @@ node bench/run.mjs --repeat 1   # 真实调用测试（需要本地 OpenAI 兼�
 
 - 设计说明：[docs/design.md](docs/design.md)
 - 测试报告：[docs/test-report.md](docs/test-report.md)
+- 审核报告：[docs/review.md](docs/review.md)
 
 ## 兼容性
 
@@ -80,3 +97,6 @@ node bench/run.mjs --repeat 1   # 真实调用测试（需要本地 OpenAI 兼�
 ## License
 
 MIT
+
+
+
