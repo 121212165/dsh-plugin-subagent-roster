@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Subagent roster",
+    "zh": "子代理名册"
+  },
+  "description": {
+    "en": "Constrained subagent roster for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的受约束子代理名册。"
+  },
+  "plugins": [
+    {
+      "name": "dsh-plugin-subagent-roster",
+      "title": {
+        "en": "Subagent roster",
+        "zh": "子代理名册"
+      },
+      "description": {
+        "en": "One delegate tool whose role enum pins a child system prompt, a tool range, and a model tier; plus a loopback page to edit the roster and a deterministic fan-out entry point.",
+        "zh": "一个 delegate 工具，其 role 枚举固定子代理的系统提示词、能力范围与模型档位；附带编辑名册的回环页面与确定性 fan-out 入口。"
+      },
+      "icon": "icons/subagent-roster.svg",
+      "author": "121212165",
+      "homepage": "https://github.com/121212165/dsh-plugin-subagent-roster#readme",
+      "repository": {
+        "url": "https://github.com/121212165/dsh-plugin-subagent-roster"
+      },
+      "versions": [
+        {
+          "version": "0.2.2",
+          "publishTimestamp": 1792308938,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/121212165/dsh-plugin-subagent-roster",
+            "commit": "24f55f2f788b93905938a5d5fb391ecaeba75d10"
+          },
+          "engines": {
+            "dsh": ">=0.2.0-rc.2 <0.3.0"
+          }
+        }
+      ]
+    }
+  ]
+}
