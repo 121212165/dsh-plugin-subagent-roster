@@ -70,6 +70,33 @@ The file is a normal document: editing it by hand is supported.
 - Every save is validated as a whole: kebab-case ids, known tier/capability/line values, and role
   invariants (a reviewer that can write is rejected). A rejected document never overwrites the file.
 
+## Deterministic entry point (no "should I delegate?" decision)
+
+Measured: letting the parent model decide *whether* to delegate is unreliable on free models (see
+[test report](docs/test-report.md) §3). So the decision moves to the entry point — drive it by item
+count:
+
+```sh
+node bin/roster-fanout.mjs \
+  --profile <your-profile> \
+  --role batch-exact \
+  --items-file items.json \
+  --contract 'one JSON object {"text": <the item>}' \
+  --expect-json \
+  --concurrency 3 \
+  --out results.jsonl
+```
+
+- **N items in, N role-children out** — the shape is a property of the invocation, not the model
+- Each answer is read from the child's `tool_result` event, never from the parent's paraphrase
+- `--expect-json` validates the contract; a child that errors, returns nothing, or returns invalid
+  JSON fails the item
+- Non-zero exit when any item failed, so a script or CI job can gate on it
+
+> Shape is deterministic; answer quality is not. Free-tier models still ignore the output contract
+> here (`--expect-json` measured 0/3). Point `ROSTER_BATCH_MODEL` at a stronger model when the
+> contract matters.
+
 ## Configure model tiers
 
 Every model id in the composition resolves from the environment, so one package serves several

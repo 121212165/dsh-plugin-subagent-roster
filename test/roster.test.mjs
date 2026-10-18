@@ -10,6 +10,7 @@ import { buildDelegateRequest, registerDelegate } from '../lib/delegate.js'
 import { renderPatch } from '../lib/patch.js'
 import { loadRoles, saveRoles, validateRoles } from '../lib/store.js'
 import { startPage } from '../lib/page.js'
+import { readChildResult, taskFor } from '../lib/fanout.js'
 import { apply, routingText } from '../lib/index.js'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -292,3 +293,28 @@ test('a roster edit can replace the delegate tool instead of colliding with it',
   second()
   assert.equal(names.size, 0)
 })
+
+test('the fan-out prompt delimits the item so a parent cannot fold it into the instruction', () => {
+  const prompt = taskFor({ role: 'batch-exact', item: 'alpha', contract: 'one JSON object', index: 0, total: 2 })
+  assert.match(prompt, /role "batch-exact"/)
+  assert.match(prompt, /--- item \(verbatim\) ---\nalpha\n--- end item ---/)
+  assert.match(prompt, /output contract: one JSON object/)
+  assert.match(prompt, /item 1 of 2/)
+})
+
+test('a fan-out item only counts as done when the child finished', () => {
+  const event = (type, extra) => JSON.stringify({ type, ...extra })
+  const stream = (result, status = 'completed') =>
+    [
+      event('tool_call', { callId: 'c1', tool: 'delegate', input: {} }),
+      event('tool_result', { callId: 'c1', status, result }),
+    ].join('\n')
+
+  assert.deepEqual(readChildResult(stream('[batch-exact] (completed)\n{"text":"alpha"}'), { expectJson: true }).ok, true)
+  assert.equal(readChildResult(stream('[batch-exact] (error)\n(no output)')).ok, false)
+  assert.equal(readChildResult(stream('[batch-exact] (completed)\nalpha')).ok, true)
+  assert.equal(readChildResult(stream('[batch-exact] (completed)\nalpha'), { expectJson: true }).error, 'output is not JSON')
+  assert.equal(readChildResult(stream('boom', 'error')).ok, false)
+  assert.equal(readChildResult('{"type":"thinking"}').error, 'no delegate tool_result in the run')
+})
+

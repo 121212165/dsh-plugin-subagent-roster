@@ -68,12 +68,35 @@ fc-team-report                NO-CHILD
 - **档位可迁移**：把 `ROSTER_BATCH_MODEL` 换成另一个模型，子代理实际模型随之改变，用例仍通过。
 - **角色可运营**：操作页 `PUT /api/state` 在真实 web profile 中返回 200，新名册立即生效（工具与分流段落被替换，不重启），并落盘到 `roles.json`；非法名册返回 400 且不覆盖旧文件。
 - **并发**：一次回合 8 个 `delegate` 调用，8 个子代理全部落在 `batch-exact`。
-- **预算**：766 / 1000 次调用。上游 429/402 共 9 次，自动换 key 后成功。
+- **预算**：820 / 1000 次调用。上游 429/402 共 9 次，自动换 key 后成功。
 
-## 5. 复现
+
+## 5. 确定性入口（`bin/roster-fanout.mjs`）
+
+把「该不该委派」从模型手里拿走之后，形态是可验证的：
+
+| 运行 | 条目 | 成功委派 | 失败 |
+|---|---|---|---|
+| 1 | 4 | 4 | 0 |
+| 2 | 3 | 3 | 0 |
+| 3 | 3 | 3 | 0 |
+| 4 | 2 | 2 | 0 |
+
+12/12 条目各自生成一个目标角色的子代理，角色全部正确（`batch-exact`），答案从子代理的
+`tool_result` 事件直接读取，不经过父代理转述。
+
+**但契约遵循仍然失败**：加 `--expect-json` 后，3 条里 0 条产出合法 JSON（cohere 与
+nemotron-super 两档都试过）。子代理还会虚构自己并不拥有的工具调用（例如输出一个
+`read` 工具的伪造调用 JSON）——它明明是 `allow: []` 的盲角色。
+
+结论：入口层解决的是**形态**，不是**答案质量**。契约重要的场景必须把批量档指向更强的模型，
+或者把 `--expect-json` 当作硬门禁让失败显式暴露。这两条都写进了 README。
+
+## 6. 复现
 
 ```sh
 OR_PORT=3002 node bench/gateway.mjs          # 本地网关（换 .secrets/openrouter-keys.txt 为你自己的 key）
 node bench/run.mjs --repeat 1                # 21 条用例
 node bench/regrade.mjs bench/results/summary-*.json   # 按超时规则重算历史汇总
 ```
+
