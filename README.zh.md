@@ -134,9 +134,14 @@ node bench/run.mjs --repeat 1   # 真实调用测试（需要本地 OpenAI 兼�
 - Node `>=22.18`
 - 纯 ESM JavaScript 产物，无构建步骤
 
+## 社区
+
+本项目认可并链接 [LINUX DO](https://linux.do/) 社区。
+
 ## License
 
 MIT
+
 
 
 

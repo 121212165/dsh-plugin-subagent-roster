@@ -158,9 +158,14 @@ role's grant, and whether negative cases really left the workspace untouched.
 - Node `>=22.18`
 - Plain ESM JavaScript artifact, no build step
 
+## Community
+
+This project acknowledges and links the [LINUX DO](https://linux.do/) community.
+
 ## License
 
 MIT
+
 
 
 
