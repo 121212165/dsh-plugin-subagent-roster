@@ -77,6 +77,23 @@ node bin/roster-fanout.mjs \
 
 > 契约由 `--expect-json` 硬校验，且**契约文本会和条目一起传给子代理**（否则它会看不到要求）。实测 8/8 合规，用的是最便宜的批量档模型。校验失败时不会把裸文本当成功返回。
 
+## 接入插件市场（官方索引格式）
+
+本仓库自带一份符合 DSH 插件市场 `format: 1` 的索引，已用官方校验器
+`@deepseek-ai/dsh-plugin-market-index` 验证通过，可直接作为索引源订阅：
+
+```
+https://121212165.github.io/dsh-plugin-subagent-roster/market/index.json
+```
+
+添加方式：**插件 → 发现 → 添加索引源**，粘贴上面的 URL（需先在「实验性插件」里打开「自定义插件市场」）。
+
+索引里只有一个版本，来源是**固定 commit 的 git**（`24f55f2`），所以确认框里显示的就是
+装上去的那一版，不会随分支变动。
+
+仓库同时带有 `dsh-plugin` topic，按 topic 抓取的社区聚合站（awesome-dsh-plugin 等）会在
+下一次抓取时收录。
+
 ## 配置模型档位
 
 组合里的模型 id 全部从环境变量解析，因此同一份包可以服务不同部署：
@@ -120,6 +137,7 @@ node bench/run.mjs --repeat 1   # 真实调用测试（需要本地 OpenAI 兼�
 ## License
 
 MIT
+
 
 
 

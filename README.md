@@ -97,6 +97,24 @@ node bin/roster-fanout.mjs \
 > child's task** (outside it, the child never sees it). Measured 8/8 compliant on the cheapest
 > bulk-tier model. A failed check is a failed item, never prose passed off as success.
 
+## Plugin market (official index format)
+
+The repository ships a `format: 1` index for the DSH plugin market, validated with the official
+`@deepseek-ai/dsh-plugin-market-index` validator. Subscribe to it directly:
+
+```
+https://121212165.github.io/dsh-plugin-subagent-roster/market/index.json
+```
+
+**Plugins → Discover → Add index source**, paste the URL (turn on “Custom plugin market” under
+“Experimental plugins” first).
+
+The index lists one version from a **commit-pinned git source** (`24f55f2`), so the source shown in
+the confirmation dialog is exactly what installs, and it cannot drift with a branch.
+
+The repo also carries the `dsh-plugin` topic, so topic-scraping aggregators (awesome-dsh-plugin and
+friends) pick it up on their next crawl.
+
 ## Configure model tiers
 
 Every model id in the composition resolves from the environment, so one package serves several
@@ -143,6 +161,7 @@ role's grant, and whether negative cases really left the workspace untouched.
 ## License
 
 MIT
+
 
 
 
